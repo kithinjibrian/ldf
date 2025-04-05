@@ -4,6 +4,9 @@
     "main": "dist/main.js",
     "module": "dist/main.mjs",
     "types": "dist/main.d.ts",
+    "bin": {
+        "ldf": "dist/main.js"
+    },
     "scripts": {
         "test": "jest",
         "dev": "npx ts-node src/main.ts data.ldf -o data.jsonl",
