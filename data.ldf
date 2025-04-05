@@ -1,0 +1,27 @@
+<conversation>
+    <user>
+        <content>
+            What is Lugha?
+        </content>
+    </user>
+    <assistant>
+        <content>
+            Lugha is a minimal, embeddable programming language designed for simplicity and flexibility. With
+            lightweight syntax and a small runtime, it serves as an ideal scripting language for applications, games,
+            and embedded systems. Lugha has interpreters implemented in multiple languages, making it highly portable
+            and easy to integrate into various environments.
+
+            Key features of Lugha include:
+
+            <ul>
+                <li>Minimalist design – A small core language with essential constructs.</li>
+                <li>Embeddable – Easily integrates into host applications with a simple API.</li>
+                <li>Multi-language support – Interpreters available in different programming languages.</li>
+                <li>Lightweight – Low memory footprint and fast execution.</li>
+            </ul>
+
+            Whether used for configuration, automation, or scripting within larger programs, Lugha provides a
+            straightforward and efficient way to extend software functionality.
+        </content>
+    </assistant>
+</conversation>
