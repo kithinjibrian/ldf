@@ -1,26 +1,17 @@
 import { Token, TokenType } from "../lexer/lexer";
 import {
-    ActionNode,
     AssistantNode,
     ASTNode,
-    BNode,
-    CodeNode,
     ContentNode,
     ConversationNode,
-    H1Node,
-    H2Node,
-    HrNode,
-    INode,
-    LiNode,
-    OlNode,
-    QNode,
     SourceElementsNode,
     StringNode,
     SystemNode,
     ThinkNode,
     ToolNode,
-    UlNode,
-    UserNode
+    UseNode,
+    UserNode,
+    VarNode
 } from "./ast";
 
 export class Parser {
@@ -91,7 +82,10 @@ export class Parser {
     private source_elements(): SourceElementsNode {
         const sources: ASTNode[] = [];
 
-        while (this.check_value("conversation")) {
+        while (
+            this.check_value("conversation") ||
+            this.check_value("var")
+        ) {
             sources.push(this.source_element());
         }
 
@@ -116,28 +110,18 @@ export class Parser {
 
         let result: ASTNode | null = null;
 
-
         switch (tag) {
-            case "ol":
-            case "ul":
             case "user":
             case "tool":
             case "system":
-            case "action":
             case "content":
             case "assistant":
             case "conversation":
                 result = this.container_tag(tag);
                 break;
+            case "use":
+            case "var":
             case "think":
-            case "code":
-            case "h1":
-            case "h2":
-            case "li":
-            case "b":
-            case "i":
-            case "q":
-            case "hr":
                 result = this.text_tag(tag);
                 break;
             default:
@@ -168,13 +152,13 @@ export class Parser {
         let tags: Record<string, TagDefinition> = {
             content: {
                 allow_text: true,
-                white_list: ["action", "code", "h1", "h2", "b", "i", "ul", "ol", "li", "q", "hr"],
+                white_list: ["use"],
                 factory(node: ASTNode[]) {
                     return new ContentNode(node);
                 }
             },
             conversation: {
-                white_list: ["user", "system", "assistant"],
+                white_list: ["user", "system", "assistant", "tool"],
                 factory(node: ASTNode[]) {
                     return new ConversationNode(node);
                 }
@@ -203,24 +187,6 @@ export class Parser {
                     return new ToolNode(node);
                 }
             },
-            action: {
-                white_list: ["code"],
-                factory(node: ASTNode[]) {
-                    return new ActionNode(node);
-                }
-            },
-            ol: {
-                white_list: ["li"],
-                factory(node: ASTNode[]) {
-                    return new OlNode(node);
-                }
-            },
-            ul: {
-                white_list: ["li"],
-                factory(node: ASTNode[]) {
-                    return new UlNode(node);
-                }
-            }
         };
 
         const nodes: ASTNode[] = [];
@@ -246,38 +212,21 @@ export class Parser {
 
     private text_tag(tag: string): ASTNode {
         if (!this.match(TokenType.Text)) {
-            this.error("Expected token text");
+            if (this.peek().value !== "use")
+                this.error("Expected token text");
         }
 
         let value = this.previous().value;
 
         let nodes: Record<string, Function> = {
             think(value: string): ThinkNode {
-                return new ThinkNode(value)
+                return new ThinkNode(value);
             },
-            code(value: string): CodeNode {
-                return new CodeNode(value)
+            var(value: string): VarNode {
+                return new VarNode(value);
             },
-            h1(value: string): H1Node {
-                return new H1Node(value)
-            },
-            h2(value: string): H2Node {
-                return new H2Node(value)
-            },
-            b(value: string): BNode {
-                return new BNode(value)
-            },
-            i(value: string): INode {
-                return new INode(value)
-            },
-            li(value: string): LiNode {
-                return new LiNode(value)
-            },
-            q(value: string): QNode {
-                return new QNode(value)
-            },
-            hr(value: string): HrNode {
-                return new HrNode(value)
+            use(): UseNode {
+                return new UseNode();
             }
         }
 

@@ -1,28 +1,22 @@
+import { lml } from "@kithinji/lml";
 import {
-    ActionNode,
     AssistantNode,
     ASTNode,
     ASTVisitor,
-    BNode,
-    CodeNode,
     ContentNode,
     ConversationNode,
-    H1Node,
-    H2Node,
-    INode,
-    LiNode,
-    OlNode,
     SourceElementsNode,
     StringNode,
     SystemNode,
     ThinkNode,
     ToolNode,
-    UlNode,
-    UserNode
+    UserNode,
+    VarNode
 } from "../parser/ast";
 
 export class JSONL implements ASTVisitor {
     private codeBuffer: string[] = [];
+    private vars: Map<string, any> = new Map();
 
     constructor() {
 
@@ -36,7 +30,7 @@ export class JSONL implements ASTVisitor {
         node: ASTNode,
         args?: Record<string, any>
     ) {
-        // console.log(node.type);
+        //   console.log(node.type);
     }
 
     public visit(node?: ASTNode, args?: Record<string, any>): void {
@@ -57,6 +51,17 @@ export class JSONL implements ASTVisitor {
 
         this.visit(ast)
 
+        this.codeBuffer.join('').split("\n").map((msg, index) => {
+            let js = JSON.parse(msg);
+            js.messages.map((m: any) => {
+                try {
+                    lml(m.content)
+                } catch (e) {
+                    throw e;
+                }
+            })
+        })
+
         return this.codeBuffer.join('');
     }
 
@@ -65,6 +70,11 @@ export class JSONL implements ASTVisitor {
         args?: Record<string, any>
     ) {
         for (let n = 0; n < node.sources.length; n++) {
+            if (node.sources[n].type == "VarNode") {
+                this.visit(node.sources[n], args);
+                continue;
+            }
+
             this.write(`{ "messages": [`)
             this.visit(node.sources[n], args);
             this.write("]}")
@@ -72,6 +82,19 @@ export class JSONL implements ASTVisitor {
             if (n < node.sources.length - 1)
                 this.write("\n")
         }
+    }
+
+    visitVar(node: VarNode, args?: Record<string, any>) {
+        let name = null;
+        node.attributes.forEach(attr => {
+            if (attr.name === "name") {
+                name = attr.value;
+            }
+        });
+
+        if (!name) throw new Error("Variable 'name' not defined");
+
+        this.vars.set(name, node.value)
     }
 
     visitConversation(node: ConversationNode, args?: Record<string, any>) {
@@ -130,72 +153,25 @@ export class JSONL implements ASTVisitor {
         this.write(`"`);
     }
 
+    visitUse(node: VarNode, args?: Record<string, any>) {
+        let name = null;
+        node.attributes.forEach(attr => {
+            if (attr.name === "name") {
+                name = attr.value;
+            }
+        });
+
+        if (!name) throw new Error("Variable 'name' not defined");
+
+        const value = this.vars.get(name)
+
+        if (!value) throw new Error(`Variable '${name}' doesn't contain a value.`);
+
+        this.write(`${JSON.stringify(value).slice(1, -1)}`);
+    }
+
     visitThink(node: ThinkNode, args?: Record<string, any>) {
         this.write(`"think": "${JSON.stringify(node.text).slice(1, -1)}"`);
-    }
-
-    visitH1(node: H1Node, args?: Record<string, any>) {
-        this.write(`# ${JSON.stringify(node.text).slice(1, -1)}`)
-    }
-
-    visitH2(node: H2Node, args?: Record<string, any>) {
-        this.write(`## ${JSON.stringify(node.text).slice(1, -1)}`)
-    }
-
-    visitB(node: BNode, args?: Record<string, any>) {
-        this.write(`**${JSON.stringify(node.text).slice(1, -1)}**`)
-    }
-
-    visitI(node: INode, args?: Record<string, any>) {
-        this.write(`*${JSON.stringify(node.text).slice(1, -1)}*`)
-    }
-
-    visitLi(node: LiNode, args?: Record<string, any>) {
-        this.write(`${JSON.stringify(node.text).slice(1, -1)}`)
-    }
-
-    visitUl(node: UlNode, args?: Record<string, any>) {
-        node.list.forEach((src, index) => {
-            this.write(`- `)
-            this.visit(src)
-            this.write(`\\n`)
-        })
-    }
-
-    visitOl(node: OlNode, args?: Record<string, any>) {
-        node.list.forEach((src, index) => {
-            this.write(`${index + 1}. `)
-            this.visit(src)
-            this.write(`\\n`)
-        })
-    }
-
-    visitAction(node: ActionNode, args?: Record<string, any>) {
-        let type = "";
-        node.attributes.forEach(attr => {
-            if (attr.name == "type") {
-                type = attr.value
-            }
-        })
-
-        this.write(`\\n<?${type}\\n`);
-
-        node.action.forEach((src, index) => {
-            this.visit(src)
-        })
-
-        this.write(`\\n?>\\n`);
-    }
-
-    visitCode(node: CodeNode, args?: Record<string, any>) {
-        let lang = "";
-        node.attributes.forEach(attr => {
-            if (attr.name == "lang") {
-                lang = attr.value
-            }
-        })
-
-        this.write(`\\n\`\`\`${lang}\\n${JSON.stringify(node.code).slice(1, -1)}\\n\`\`\`\\n`);
     }
 
     visitString(node: StringNode, args?: Record<string, any>) {

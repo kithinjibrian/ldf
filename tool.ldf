@@ -1,0 +1,11 @@
+<var name="system_prompt">
+p{"Hello y'all"}
+</var>
+
+<conversation>
+    <system>
+        <content>
+<use name="system_prompt"></use>
+        </content>
+    </system>
+</conversation>

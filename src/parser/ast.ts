@@ -1,21 +1,12 @@
 export interface ASTVisitor {
     before_accept?(node: ASTNode, args?: Record<string, any>): any;
     after_accept?(node: ASTNode, args?: Record<string, any>): any;
-    visitH1?(node: H1Node, args?: Record<string, any>): any;
-    visitH2?(node: H2Node, args?: Record<string, any>): any;
-    visitB?(node: BNode, args?: Record<string, any>): any;
-    visitI?(node: INode, args?: Record<string, any>): any;
-    visitUl?(node: UlNode, args?: Record<string, any>): any;
-    visitLi?(node: LiNode, args?: Record<string, any>): any;
-    visitOl?(node: OlNode, args?: Record<string, any>): any;
-    visitQ?(node: QNode, args?: Record<string, any>): any;
-    visitHr?(node: HrNode, args?: Record<string, any>): any;
     visitUser?(node: UserNode, args?: Record<string, any>): any;
+    visitUse?(node: UseNode, args?: Record<string, any>): any;
+    visitVar?(node: VarNode, args?: Record<string, any>): any;
     visitTool?(node: ToolNode, args?: Record<string, any>): any;
-    visitCode?(node: CodeNode, args?: Record<string, any>): any;
     visitThink?(node: ThinkNode, args?: Record<string, any>): any;
     visitSystem?(node: SystemNode, args?: Record<string, any>): any;
-    visitAction?(node: ActionNode, args?: Record<string, any>): any;
     visitString?(node: StringNode, args?: Record<string, any>): any;
     visitContent?(node: ContentNode, args?: Record<string, any>): any;
     visitAssistant?(node: AssistantNode, args?: Record<string, any>): any;
@@ -81,6 +72,30 @@ export class UserNode extends ASTNodeBase {
     }
 }
 
+export class VarNode extends ASTNodeBase {
+    type = 'VarNode';
+
+    constructor(public value: string) {
+        super();
+    }
+
+    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
+        return visitor.visitVar?.(this, args);
+    }
+}
+
+export class UseNode extends ASTNodeBase {
+    type = 'UseNode';
+
+    constructor() {
+        super();
+    }
+
+    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
+        return visitor.visitUse?.(this, args);
+    }
+}
+
 export class SystemNode extends ASTNodeBase {
     type = 'SystemNode';
 
@@ -138,139 +153,6 @@ export class ThinkNode extends ASTNodeBase {
 
     _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
         return visitor.visitThink?.(this, args);
-    }
-}
-
-export class ActionNode extends ASTNodeBase {
-    type = 'ActionNode';
-
-    constructor(public action: ASTNode[]) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitAction?.(this, args);
-    }
-}
-
-export class CodeNode extends ASTNodeBase {
-    type = 'CodeNode';
-
-    constructor(public code: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitCode?.(this, args);
-    }
-}
-
-export class H1Node extends ASTNodeBase {
-    type = 'H1Node';
-
-    constructor(public text: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitH1?.(this, args);
-    }
-}
-
-export class H2Node extends ASTNodeBase {
-    type = 'H2Node';
-
-    constructor(public text: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitH2?.(this, args);
-    }
-}
-
-export class BNode extends ASTNodeBase {
-    type = 'BNode';
-
-    constructor(public text: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitB?.(this, args);
-    }
-}
-
-export class INode extends ASTNodeBase {
-    type = 'INode';
-
-    constructor(public text: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitI?.(this, args);
-    }
-}
-
-export class UlNode extends ASTNodeBase {
-    type = 'UlNode';
-
-    constructor(public list: ASTNode[]) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitUl?.(this, args);
-    }
-}
-
-export class LiNode extends ASTNodeBase {
-    type = 'LiNode';
-
-    constructor(public text: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitLi?.(this, args);
-    }
-}
-
-export class OlNode extends ASTNodeBase {
-    type = 'OlNode';
-
-    constructor(public list: ASTNode[]) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitOl?.(this, args);
-    }
-}
-
-export class QNode extends ASTNodeBase {
-    type = 'QNode';
-
-    constructor(public text: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitQ?.(this, args);
-    }
-}
-
-
-export class HrNode extends ASTNodeBase {
-    type = 'HrNode';
-
-    constructor(public text: string) {
-        super();
-    }
-
-    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitHr?.(this, args);
     }
 }
 
