@@ -1,13 +1,14 @@
 import { Token, TokenType } from "../lexer/lexer";
 import {
+    AnswerNode,
     AssistantNode,
     ASTNode,
     ContentNode,
     ConversationNode,
+    ReasonNode,
     SourceElementsNode,
     StringNode,
     SystemNode,
-    ThinkNode,
     ToolNode,
     UseNode,
     UserNode,
@@ -121,7 +122,8 @@ export class Parser {
                 break;
             case "use":
             case "var":
-            case "think":
+            case "answer":
+            case "reasoning":
                 result = this.text_tag(tag);
                 break;
             default:
@@ -152,7 +154,7 @@ export class Parser {
         let tags: Record<string, TagDefinition> = {
             content: {
                 allow_text: true,
-                white_list: ["use"],
+                white_list: ["use", "reasoning", "answer"],
                 factory(node: ASTNode[]) {
                     return new ContentNode(node);
                 }
@@ -164,7 +166,7 @@ export class Parser {
                 }
             },
             assistant: {
-                white_list: ["think", "content"],
+                white_list: ["content"],
                 factory(node: ASTNode[]) {
                     return new AssistantNode(node);
                 }
@@ -219,8 +221,11 @@ export class Parser {
         let value = this.previous().value;
 
         let nodes: Record<string, Function> = {
-            think(value: string): ThinkNode {
-                return new ThinkNode(value);
+            reasoning(value: string): ReasonNode {
+                return new ReasonNode(value);
+            },
+            answer(value: string): AnswerNode {
+                return new AnswerNode(value);
             },
             var(value: string): VarNode {
                 return new VarNode(value);

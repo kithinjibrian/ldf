@@ -5,7 +5,8 @@ export interface ASTVisitor {
     visitUse?(node: UseNode, args?: Record<string, any>): any;
     visitVar?(node: VarNode, args?: Record<string, any>): any;
     visitTool?(node: ToolNode, args?: Record<string, any>): any;
-    visitThink?(node: ThinkNode, args?: Record<string, any>): any;
+    visitReason?(node: ReasonNode, args?: Record<string, any>): any;
+    visitAnswer?(node: AnswerNode, args?: Record<string, any>): any;
     visitSystem?(node: SystemNode, args?: Record<string, any>): any;
     visitString?(node: StringNode, args?: Record<string, any>): any;
     visitContent?(node: ContentNode, args?: Record<string, any>): any;
@@ -144,15 +145,27 @@ export class ContentNode extends ASTNodeBase {
     }
 }
 
-export class ThinkNode extends ASTNodeBase {
-    type = 'ThinkNode';
+export class ReasonNode extends ASTNodeBase {
+    type = 'ReasonNode';
 
     constructor(public text: string) {
         super();
     }
 
     _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
-        return visitor.visitThink?.(this, args);
+        return visitor.visitReason?.(this, args);
+    }
+}
+
+export class AnswerNode extends ASTNodeBase {
+    type = 'AnswerNode';
+
+    constructor(public text: string) {
+        super();
+    }
+
+    _accept(visitor: ASTVisitor, args?: Record<string, any>): void {
+        return visitor.visitAnswer?.(this, args);
     }
 }
 

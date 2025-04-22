@@ -1,6 +1,6 @@
 {
     "name": "@kithinji/ldf",
-    "version": "1.0.13",
+    "version": "1.0.18",
     "main": "dist/main.js",
     "module": "dist/main.mjs",
     "types": "dist/main.d.ts",
@@ -9,7 +9,7 @@
     },
     "scripts": {
         "test": "jest",
-        "dev": "npx ts-node src/main.ts tool.ldf -o tool.jsonl",
+        "dev": "npx ts-node src/main.ts tool.ldf -o tool.jsonl -r true -t false",
         "build": "tsc"
     },
     "keywords": [],
@@ -36,6 +36,6 @@
     },
     "homepage": "https://github.com/kithinjibrian/ldf#readme",
     "dependencies": {
-        "@kithinji/lml": "^1.0.7"
+        "@kithinji/lml": "^1.0.8"
     }
 }

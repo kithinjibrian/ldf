@@ -1,0 +1,2 @@
+{ "messages": [{ "role": "assistant", "content": "reason { p { \"hello\" } }answer { p { \"hello\" } }" }]}
+{ "messages": [{ "role": "assistant", "content": "answer { p { \"hello\" } }" }]}

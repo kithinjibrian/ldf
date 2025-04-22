@@ -1,14 +1,15 @@
 import { lml } from "@kithinji/lml";
 import {
+    AnswerNode,
     AssistantNode,
     ASTNode,
     ASTVisitor,
     ContentNode,
     ConversationNode,
+    ReasonNode,
     SourceElementsNode,
     StringNode,
     SystemNode,
-    ThinkNode,
     ToolNode,
     UserNode,
     VarNode
@@ -17,9 +18,18 @@ import {
 export class JSONL implements ASTVisitor {
     private codeBuffer: string[] = [];
     private vars: Map<string, any> = new Map();
+    private reasoning: boolean = false;
+    private tool: boolean = true
 
-    constructor() {
-
+    constructor({
+        reasoning,
+        tool
+    }: {
+        reasoning?: boolean,
+        tool?: boolean,
+    }) {
+        this.reasoning = reasoning!;
+        this.tool = tool!;
     }
 
     public write(code: string) {
@@ -126,18 +136,26 @@ export class JSONL implements ASTVisitor {
     }
 
     visitTool(node: ToolNode, args?: Record<string, any>) {
-        this.write(`{ "role": "tool", `)
+        if (this.tool)
+            this.write(`{ "role": "tool", `)
+        else
+            this.write(`{ "role": "assistant", `)
+
         node.nodes.forEach((src, index) => {
             this.visit(src)
             if (index < node.nodes.length - 1)
                 this.write(", ");
         })
-        this.write(", \"tool_call_id\": \"lugha_interpreter\" }")
+        this.write(" }")
     }
 
     visitAssistant(node: AssistantNode, args?: Record<string, any>) {
         this.write(`{ "role": "assistant", `)
         node.response.forEach((src, index) => {
+
+            if (src instanceof ReasonNode && !this.reasoning)
+                return;
+
             this.visit(src)
             if (index < node.response.length - 1)
                 this.write(", ");
@@ -170,8 +188,12 @@ export class JSONL implements ASTVisitor {
         this.write(`${JSON.stringify(value).slice(1, -1)}`);
     }
 
-    visitThink(node: ThinkNode, args?: Record<string, any>) {
-        //  this.write(`"think": "${JSON.stringify(node.text).slice(1, -1)}"`);
+    visitReason(node: ReasonNode, args?: Record<string, any>) {
+        this.write(`reason { ${JSON.stringify(node.text).slice(1, -1)} }`);
+    }
+
+    visitAnswer(node: AnswerNode, args?: Record<string, any>) {
+        this.write(`answer { ${JSON.stringify(node.text).slice(1, -1)} }`);
     }
 
     visitString(node: StringNode, args?: Record<string, any>) {

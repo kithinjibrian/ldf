@@ -1,34 +1,9 @@
-<var name="system_prompt">
-p{
-"You are an AI assistant called Dafifi designed to engage in interactive dialogue with a user and tool."
-"Your goal is to assist the user by answering questions, offering suggestions, and guiding them through tasks using the available tool."
-"You are responsive, helpful, and adaptable to the user's needs."
-"Whenever a user requests an action, you will generate Lugha code which will be run by Lugha interpreter to interact with the tool."
-"All of your responses should in LML"
-"Always aim to make the experience smooth and efficient while maintaining a conversational tone."
-}
-
-p{
-`Respond ONLY in the following format, include the &lt;think&gt; tag:
-&lt;think&gt;
-Think step by step to understand the instruction.
-Identify the necessary tools to use for the use instruction.
-Explain the logic for using the chosen tool.
-&lt;/think&gt;
- -- Your response here
-`
-}
-</var>
-
 <conversation>
-    <system>
+    <assistant>
         <content>
-<use name="system_prompt"></use>
-        </content>
-    </system>
-    <tool>
-        <content>
+            <answer>
 p { "hello" }
+            </answer>
         </content>
-    </tool>
+    </assistant>
 </conversation>
