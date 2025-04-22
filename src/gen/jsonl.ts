@@ -171,7 +171,7 @@ export class JSONL implements ASTVisitor {
     }
 
     visitThink(node: ThinkNode, args?: Record<string, any>) {
-        this.write(`"think": "${JSON.stringify(node.text).slice(1, -1)}"`);
+        //  this.write(`"think": "${JSON.stringify(node.text).slice(1, -1)}"`);
     }
 
     visitString(node: StringNode, args?: Record<string, any>) {
