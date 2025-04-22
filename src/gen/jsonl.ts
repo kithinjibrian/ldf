@@ -132,7 +132,7 @@ export class JSONL implements ASTVisitor {
             if (index < node.nodes.length - 1)
                 this.write(", ");
         })
-        this.write(" }")
+        this.write(", \"tool_call_id\": \"lugha_interpreter\" }")
     }
 
     visitAssistant(node: AssistantNode, args?: Record<string, any>) {

@@ -1,3 +1,5 @@
+// #!/usr/bin/env node
+
 import { JSONL, Lexer, Parser } from "./types";
 import { createReadStream, createWriteStream } from "fs";
 import { readFile } from "fs/promises";

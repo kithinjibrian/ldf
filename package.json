@@ -1,6 +1,6 @@
 {
     "name": "@kithinji/ldf",
-    "version": "1.0.6",
+    "version": "1.0.10",
     "main": "dist/main.js",
     "module": "dist/main.mjs",
     "types": "dist/main.d.ts",
@@ -36,6 +36,6 @@
     },
     "homepage": "https://github.com/kithinjibrian/ldf#readme",
     "dependencies": {
-        "@kithinji/lml": "^1.0.4"
+        "@kithinji/lml": "^1.0.7"
     }
 }
