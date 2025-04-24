@@ -1,72 +1,104 @@
 // #!/usr/bin/env node
 
-import { JSONL, Lexer, Parser } from "./types";
-import { createReadStream, createWriteStream } from "fs";
-import { readFile } from "fs/promises";
+import { mkdir, readFile, readdir, stat } from 'fs/promises';
+import { createWriteStream } from 'fs';
+import { join, extname } from 'path';
+import { z } from 'zod';
+import { JSONL } from './types';
 
-async function exec(filepath: string, flags: { [key: string]: string }) {
+const DataContainerSchema = z.object({
+    src: z.string(),
+    dist: z.string(),
+    shards: z.array(z.string()),
+    config: z.object({
+        tool: z.string(),
+        reasoning: z.string(),
+    }).optional(),
+});
+
+type DataContainer = z.infer<typeof DataContainerSchema>;
+
+async function exec(filepath: string, config: DataContainer) {
     const code = await readFile(filepath, 'utf-8');
-    let lexer = new Lexer(code);
-    let tokens = lexer.tokenize();
 
-    let parser = new Parser(tokens);
-    let ast = parser.parse();
+    try {
+        return new JSONL(code, config).run();
+    } catch (e) {
+        throw e;
+    }
+}
 
-    return new JSONL({
-        reasoning: flags["-r"] === "true",
-        tool: flags["-t"] === "true"
-    }).run(ast);
+async function getLdfFiles(dir: string): Promise<string[]> {
+    let files: string[] = [];
+
+    const entries = await readdir(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+            files = [...files, ...(await getLdfFiles(fullPath))];
+        } else if (entry.isFile() && extname(entry.name) === '.ldf') {
+            files.push(fullPath);
+        }
+    }
+
+    return files;
 }
 
 async function main() {
     const args = process.argv.slice(2);
 
-    let flags: { [key: string]: string } = {};
+    if (!args[0]) {
+        console.error("Usage: node script.js <config.json>");
+        process.exit(1);
+    }
 
-    for (let i = 0; i < args.length; i++) {
-        if (args[i].startsWith('-')) {
-            const flag = args[i];
-            const value = args[i + 1];
+    const raw = await readFile(args[0], 'utf-8');
+    const parsed = DataContainerSchema.safeParse(JSON.parse(raw));
 
-            if (value && !value.startsWith('-')) {
-                flags[flag] = value;
-                i++;
-            } else {
-                flags[flag] = '';
-            }
+    if (!parsed.success) {
+        console.error("❌ Config validation failed:");
+        console.dir(parsed.error.format(), { depth: null });
+        process.exit(1);
+    }
+
+    const config = parsed.data;
+
+    const outputFilePath = join(config.dist, 'data.jsonl');
+
+    await mkdir(config.dist, { recursive: true });
+
+    const writeStream = createWriteStream(outputFilePath, { flags: 'a', encoding: 'utf-8' });
+
+    console.log(`✅ Writing all results to ${outputFilePath}`);
+
+    for (const shardRelPath of config.shards) {
+        const shardPath = join(config.src, shardRelPath);
+
+        const stats = await stat(shardPath);
+
+        let filesToProcess: string[] = [];
+
+        if (stats.isDirectory()) {
+            filesToProcess = await getLdfFiles(shardPath);
+        } else if (stats.isFile() && extname(shardPath) === '.ldf') {
+            filesToProcess = [shardPath];
+        } else {
+            console.log(`Skipping unsupported shard type: ${shardPath}`);
+            continue;
+        }
+
+        for (const inputPath of filesToProcess) {
+            const jsonl = await exec(inputPath, config);
+
+            writeStream.write(jsonl + "\n");
+            console.log(`✅ Appended to ${outputFilePath}`);
         }
     }
 
-    let input_files = args.filter((arg, index) => {
-        return !arg.startsWith('-') && !args[index - 1]?.startsWith('-');
-    });
-
-    try {
-
-        let writeStream;
-        if (flags["-o"]) {
-            writeStream = createWriteStream(flags["-o"], { flags: 'a', encoding: 'utf-8' });
-        }
-
-        for (let filepath of input_files) {
-
-            const jsonl = await exec(filepath, flags);
-
-            if (writeStream) {
-                writeStream.write(jsonl + "\n");
-            } else {
-
-                console.log(jsonl);
-            }
-        }
-
-        if (writeStream) {
-            writeStream.end();
-            console.log(`Successfully written to ${flags["-o"]}`);
-        }
-    } catch (error) {
-        console.error("Error processing files:", error);
-    }
+    writeStream.end();
+    console.log(`✅ All results written to ${outputFilePath}`);
 }
 
 main().catch(err => {

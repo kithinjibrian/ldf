@@ -1,202 +1,540 @@
-import { lml } from "@kithinji/lml";
 import {
-    AnswerNode,
-    AssistantNode,
     ASTNode,
-    ASTVisitor,
-    ContentNode,
-    ConversationNode,
-    ReasonNode,
-    SourceElementsNode,
+    AttributeListNode,
+    AttributeNode,
+    BlockNode,
+    BNode,
+    ButtonNode,
+    CNode,
+    CodeNode,
+    DocumentNode,
+    ElementListNode,
+    H1Node,
+    H2Node,
+    H3Node,
+    H4Node,
+    H5Node,
+    H6Node,
+    INode,
+    InputNode,
+    LinkNode,
+    LiNode,
+    lml,
+    LmlASTVisitor,
+    LmlSpanNode,
+    NoSpaceNode,
+    NumberNode,
+    OlNode,
+    ParagraphNode,
+    SinkholeNode,
     StringNode,
-    SystemNode,
-    ToolNode,
-    UserNode,
-    VarNode
-} from "../parser/ast";
+    UlNode
+} from "@kithinji/lml";
 
-export class JSONL implements ASTVisitor {
+export class JSONL implements LmlASTVisitor {
     private codeBuffer: string[] = [];
-    private vars: Map<string, any> = new Map();
-    private reasoning: boolean = false;
-    private tool: boolean = true
 
-    constructor({
-        reasoning,
-        tool
-    }: {
-        reasoning?: boolean,
-        tool?: boolean,
-    }) {
-        this.reasoning = reasoning!;
-        this.tool = tool!;
+    constructor(
+        public code: string,
+        public config: Record<string, any>
+    ) { }
+
+    public before_accept(
+        node: ASTNode,
+        args?: Record<string, any>
+    ) {
+        //console.log(node.type)
+    }
+
+    public visit(node?: ASTNode, args?: Record<string, any>): any {
+        if (node == undefined) return "";
+
+        return node.accept(this, args);
     }
 
     public write(code: string) {
         this.codeBuffer.push(code);
     }
 
-    public before_accept(
-        node: ASTNode,
-        args?: Record<string, any>
-    ) {
-        //   console.log(node.type);
-    }
+    public run() {
+        try {
+            const ast = lml(this.code);
+            this.visit(ast)
 
-    public visit(node?: ASTNode, args?: Record<string, any>): void {
-        if (node == undefined) return;
-        node.accept(this, args);
-    }
-
-    public after_accept(
-        node: ASTNode,
-        args?: Record<string, any>
-    ) {
-    }
-
-    public run(
-        ast: ASTNode,
-    ) {
-        this.codeBuffer = [];
-
-        this.visit(ast)
-
-        this.codeBuffer.join('').split("\n").map((msg, index) => {
-            let js = JSON.parse(msg);
-            js.messages.map((m: any) => {
-                try {
-                    lml(m.content)
-                } catch (e) {
-                    throw e;
-                }
-            })
-        })
-
-        return this.codeBuffer.join('');
-    }
-
-    visitSourceElements(
-        node: SourceElementsNode,
-        args?: Record<string, any>
-    ) {
-        for (let n = 0; n < node.sources.length; n++) {
-            if (node.sources[n].type == "VarNode") {
-                this.visit(node.sources[n], args);
-                continue;
-            }
-
-            this.write(`{ "messages": [`)
-            this.visit(node.sources[n], args);
-            this.write("]}")
-
-            if (n < node.sources.length - 1)
-                this.write("\n")
+            return this.codeBuffer.join("");
+        } catch (e) {
+            throw e;
         }
     }
 
-    visitVar(node: VarNode, args?: Record<string, any>) {
-        let name = null;
-        node.attributes.forEach(attr => {
-            if (attr.name === "name") {
-                name = attr.value;
+    visitDocument(
+        node: DocumentNode,
+        args?: Record<string, any>
+    ) {
+        this.visit(node.document, args)
+    }
+
+    visitElementList(
+        node: ElementListNode,
+        args?: Record<string, any>
+    ) {
+        return node.sources
+            .forEach((src, index) => {
+                this.visit(src, args)
+
+                if (index < node.sources.length - 1)
+                    this.write("\n");
+            })
+    }
+
+    visitBlock(
+        node: BlockNode,
+        args?: Record<string, any>
+    ) {
+        return node.body
+            .forEach((src, index) => {
+                this.visit(src, args)
+
+                if (src instanceof SinkholeNode) {
+                    if (index < node.body.length - 1)
+                        this.write(", ");
+                }
+            });
+    }
+
+    visitSinkhole(node: SinkholeNode, args?: Record<string, any>) {
+        switch (node.name) {
+            case "conversation": {
+                this.write(`{ "messages": [`)
+                this.visit(node.body)
+                this.write("]}")
+                break;
             }
-        });
 
-        if (!name) throw new Error("Variable 'name' not defined");
+            case "system": {
+                this.write(`{ "role": "system", `);
+                this.visit(node.body);
+                this.write(" }");
+                break;
+            }
 
-        this.vars.set(name, node.value)
+            case "user": {
+                this.write(`{ "role": "user", `);
+                this.visit(node.body);
+                this.write(" }");
+                break;
+            }
+
+            case "assistant": {
+                this.write(`{ "role": "assistant", `);
+                this.visit(node.body);
+                this.write(" }");
+                break;
+            }
+
+            case "tool": {
+                if ("tool" in this.config && this.config.tool == "to_assistant")
+                    this.write(`{ "role": "assistant", `);
+                else
+                    this.write(`{ "role": "tool", `);
+
+                this.visit(node.body);
+                this.write(" }");
+                break;
+            }
+
+            case "content": {
+                this.write(`"content": "`);
+                this.visit(node.body)
+                this.write(`"`);
+                break;
+            }
+
+            case "answer": {
+                this.write(`answer { `);
+                this.visit(node.body)
+                this.write(` }`);
+                break;
+            }
+
+            case "reason": {
+                if ("reason" in this.config &&
+                    this.config.reason == "hide"
+                ) {
+                    break;
+                }
+
+                this.write(`reason { `);
+                this.visit(node.body)
+                this.write(` }`);
+                break;
+            }
+        }
     }
 
-    visitConversation(node: ConversationNode, args?: Record<string, any>) {
-        node.parties.forEach((src, index) => {
-            this.visit(src, args);
-            if (index < node.parties.length - 1)
-                this.write(", ");
-        });
-    }
+    visitH1(
+        node: H1Node,
+        args?: Record<string, any>
+    ) {
+        this.write(`h1`)
 
-    visitUser(node: UserNode, args?: Record<string, any>) {
-        this.write(`{ "role": "user", `)
-        node.nodes.forEach((src, index) => {
-            this.visit(src)
-            if (index < node.nodes.length - 1)
-                this.write(", ");
-        })
-        this.write(" }")
-    }
-
-    visitSystem(node: SystemNode, args?: Record<string, any>) {
-        this.write(`{ "role": "system", `)
-        node.nodes.forEach((src, index) => {
-            this.visit(src)
-            if (index < node.nodes.length - 1)
-                this.write(", ");
-        })
-        this.write(" }")
-    }
-
-    visitTool(node: ToolNode, args?: Record<string, any>) {
-        if (this.tool)
-            this.write(`{ "role": "tool", `)
+        if (node.attributes)
+            this.visit(node.attributes);
         else
-            this.write(`{ "role": "assistant", `)
+            this.write(" ");
 
-        node.nodes.forEach((src, index) => {
-            this.visit(src)
-            if (index < node.nodes.length - 1)
-                this.write(", ");
-        })
-        this.write(" }")
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
     }
 
-    visitAssistant(node: AssistantNode, args?: Record<string, any>) {
-        this.write(`{ "role": "assistant", `)
-        node.response.forEach((src, index) => {
+    visitH2(
+        node: H2Node,
+        args?: Record<string, any>
+    ) {
+        this.write(`h2`)
 
-            if (src instanceof ReasonNode && !this.reasoning)
-                return;
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
 
-            this.visit(src)
-            if (index < node.response.length - 1)
-                this.write(", ");
-        })
-        this.write(" }")
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
     }
 
-    visitContent(node: ContentNode, args?: Record<string, any>) {
-        this.write(`"content": "`);
-        node.content.forEach((src, index) => {
+    visitH3(
+        node: H3Node,
+        args?: Record<string, any>
+    ) {
+        this.write(`h3`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitH4(
+        node: H4Node,
+        args?: Record<string, any>
+    ) {
+        this.write(`h4`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitH5(
+        node: H5Node,
+        args?: Record<string, any>
+    ) {
+        this.write(`h5`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitH6(
+        node: H6Node,
+        args?: Record<string, any>
+    ) {
+        this.write(`h6`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitParagraph(
+        node: ParagraphNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`p`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitOl(
+        node: OlNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`ol`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitUl(
+        node: UlNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`ul`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitli(
+        node: LiNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`li`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+        this.visit(node.body);
+        this.write(` }`)
+    }
+
+    visitCode(
+        node: CodeNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`code`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ `)
+
+        if (
+            node.body instanceof BlockNode &&
+            node.body.body[0] instanceof StringNode
+        ) {
+            this.write(`\`${JSON.stringify(node.body.body[0].value).slice(1, -1)}\``);
+        } else {
+            throw new Error(`Expected a string in element 'code' but got ${node.body?.type}`);
+        }
+
+        this.write(` }`)
+    }
+
+    visitImg(
+        node: LiNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`img`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`{ "" }`)
+    }
+
+    visitSpan(
+        node: LmlSpanNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`span`)
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else
+            this.write(" ");
+
+        this.write(`< `)
+        this.visit(node.body);
+        this.write(` >`)
+    }
+
+    visitInput(
+        node: InputNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`input`)
+
+        const inline = node.body instanceof StringNode;
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else {
+            if (!inline)
+                this.write(" ");
+        }
+
+        if (!inline)
+            this.write("{ ")
+
+        this.visit(node.body);
+
+        if (!inline)
+            this.write(" }")
+    }
+
+    visitButton(
+        node: ButtonNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`button`)
+
+        const inline = node.body instanceof StringNode;
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else {
+            if (!inline)
+                this.write(" ");
+        }
+
+
+        if (!inline)
+            this.write("{ ")
+
+        this.visit(node.body);
+
+        if (!inline)
+            this.write(" }")
+    }
+
+    visitLink(
+        node: LinkNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`link`)
+
+        const inline = node.body instanceof StringNode;
+
+        if (node.attributes)
+            this.visit(node.attributes);
+        else {
+            if (!inline)
+                this.write(" ");
+        }
+
+
+        if (!inline)
+            this.write("{ ")
+
+        this.visit(node.body);
+
+        if (!inline)
+            this.write(" }")
+    }
+
+    visitB(
+        node: BNode,
+        args?: Record<string, any>
+    ) {
+        console.log(node)
+        this.write(`b${node.no_space ? '-' : ''}`)
+        this.visit(node.attributes);
+        this.visit(node.body);
+    }
+
+    visitC(
+        node: CNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`c${node.no_space ? '-' : ''}`)
+        this.visit(node.attributes);
+        this.visit(node.body);
+    }
+
+    visitI(
+        node: INode,
+        args?: Record<string, any>
+    ) {
+        this.write(`i${node.no_space ? '-' : ''}`)
+        this.visit(node.attributes);
+        this.visit(node.body);
+    }
+
+    visitNoSpace(
+        node: NoSpaceNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`ns`)
+        this.visit(node.attributes);
+        this.visit(node.body);
+    }
+
+    visitString(
+        node: StringNode,
+        args?: Record<string, any>
+    ) {
+        if (node.value == " ")
+            this.write("\\n")
+        else
+            this.write(`'${JSON.stringify(node.value).slice(1, -1)}'`)
+    }
+
+    visitNumber(
+        node: NumberNode,
+        args?: Record<string, any>
+    ) {
+        this.write(`${node.value}`)
+    }
+
+    visitAttributeList(
+        node: AttributeListNode,
+        args?: Record<string, any>
+    ) {
+        this.write("[");
+        node.attributes.forEach((src, index) => {
             this.visit(src);
+
+            if (index < node.attributes.length - 1)
+                this.write(", ");
         })
-        this.write(`"`);
+        this.write("] ");
     }
 
-    visitUse(node: VarNode, args?: Record<string, any>) {
-        let name = null;
-        node.attributes.forEach(attr => {
-            if (attr.name === "name") {
-                name = attr.value;
-            }
-        });
-
-        if (!name) throw new Error("Variable 'name' not defined");
-
-        const value = this.vars.get(name)
-
-        if (!value) throw new Error(`Variable '${name}' doesn't contain a value.`);
-
-        this.write(`${JSON.stringify(value).slice(1, -1)}`);
-    }
-
-    visitReason(node: ReasonNode, args?: Record<string, any>) {
-        this.write(`reason { ${JSON.stringify(node.text).slice(1, -1)} }`);
-    }
-
-    visitAnswer(node: AnswerNode, args?: Record<string, any>) {
-        this.write(`answer { ${JSON.stringify(node.text).slice(1, -1)} }`);
-    }
-
-    visitString(node: StringNode, args?: Record<string, any>) {
-        this.write(`${JSON.stringify(node.string).slice(1, -1)}`);
+    visitAttribute(
+        node: AttributeNode,
+        args?: Record<string, any>
+    ) {
+        this.write(node.key.name);
+        this.write("=");
+        this.visit(node.value);
     }
 }

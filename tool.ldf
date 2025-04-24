@@ -1,9 +1,0 @@
-<conversation>
-    <assistant>
-        <content>
-            <answer>
-p { "hello" }
-            </answer>
-        </content>
-    </assistant>
-</conversation>

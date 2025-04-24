@@ -1,0 +1,234 @@
+import { lml } from "@kithinji/lml";
+import {
+    AnswerNode,
+    AssistantNode,
+    ASTNode,
+    ASTVisitor,
+    ContentNode,
+    ConversationNode,
+    ReasonNode,
+    SourceElementsNode,
+    StringNode,
+    SystemNode,
+    ToolNode,
+    UserNode,
+    VarNode
+} from "../parser/ast";
+
+export class LML implements ASTVisitor {
+    private codeBuffer: string[] = [];
+    private vars: Map<string, any> = new Map();
+    private reasoning: boolean = false;
+    private tool: boolean = true
+    private indentLevel: number = 0;
+
+    constructor({
+        reasoning,
+        tool
+    }: {
+        reasoning?: boolean,
+        tool?: boolean,
+    }) {
+        this.reasoning = reasoning!;
+        this.tool = tool!;
+    }
+
+    public write(code: string) {
+        this.codeBuffer.push(code);
+    }
+
+    private indent(): string {
+        if (this.indentLevel <= 0) return "";
+
+        return '    '.repeat(this.indentLevel);
+    }
+
+    private increaseIndent() {
+        this.indentLevel++;
+    }
+
+    private decreaseIndent() {
+        this.indentLevel--;
+    }
+
+    public before_accept(
+        node: ASTNode,
+        args?: Record<string, any>
+    ) {
+        //console.log(node.type);
+        switch (node.type) {
+            case "ReasonNode":
+            case "UserNode":
+            case "ToolNode":
+            case "AnswerNode":
+            case "ContentNode":
+            case "AssistantNode": {
+                this.increaseIndent()
+                this.codeBuffer.push(this.indent());
+            }
+        }
+    }
+
+    public visit(node?: ASTNode, args?: Record<string, any>): void {
+        if (node == undefined) return;
+        node.accept(this, args);
+    }
+
+    public after_accept(
+        node: ASTNode,
+        args?: Record<string, any>
+    ) {
+        switch (node.type) {
+            case "ReasonNode":
+            case "UserNode":
+            case "ToolNode":
+            case "AnswerNode":
+            case "ContentNode":
+            case "AssistantNode": {
+                this.decreaseIndent();
+            }
+        }
+
+    }
+
+    public run(
+        ast: ASTNode,
+    ) {
+        this.codeBuffer = [];
+
+        this.visit(ast)
+
+        // this.codeBuffer.join('').split("\n").map((msg, index) => {
+        //     let js = JSON.parse(msg);
+        //     js.messages.map((m: any) => {
+        //         try {
+        //             lml(m.content)
+        //         } catch (e) {
+        //             throw e;
+        //         }
+        //     })
+        // })
+
+        return this.codeBuffer.join('');
+    }
+
+    visitSourceElements(
+        node: SourceElementsNode,
+        args?: Record<string, any>
+    ) {
+        for (let n = 0; n < node.sources.length; n++) {
+            if (node.sources[n].type == "VarNode") {
+                this.visit(node.sources[n], args);
+                continue;
+            }
+
+            this.write(`conversation {\n`)
+            this.visit(node.sources[n], args);
+            this.write("\n}")
+
+            if (n < node.sources.length - 1)
+                this.write("\n\n/************************/\n\n")
+        }
+    }
+
+    visitVar(node: VarNode, args?: Record<string, any>) {
+        let name = null;
+        node.attributes.forEach(attr => {
+            if (attr.name === "name") {
+                name = attr.value;
+            }
+        });
+
+        if (!name) throw new Error("Variable 'name' not defined");
+
+        this.vars.set(name, node.value)
+    }
+
+    visitConversation(node: ConversationNode, args?: Record<string, any>) {
+        node.parties.forEach((src, index) => {
+            this.visit(src, args);
+            if (index < node.parties.length - 1)
+                this.write("\n\n");
+        });
+    }
+
+    visitUser(node: UserNode, args?: Record<string, any>) {
+        this.write(`user {\n`)
+        node.nodes.forEach((src, index) => {
+            this.visit(src)
+        })
+        this.write(`\n${this.indent()}}`);
+    }
+
+    visitSystem(node: SystemNode, args?: Record<string, any>) {
+        this.write(`system {\n`)
+        node.nodes.forEach((src, index) => {
+            this.visit(src)
+        })
+        this.write(`\n${this.indent()}}`);
+    }
+
+    visitTool(node: ToolNode, args?: Record<string, any>) {
+        if (this.tool)
+            this.write(`tool {\n`)
+        else
+            this.write(`assistant {\n`)
+
+        node.nodes.forEach((src, index) => {
+            this.visit(src)
+        })
+        this.write(`\n${this.indent()}}`);
+    }
+
+    visitAssistant(node: AssistantNode, args?: Record<string, any>) {
+        this.write(`assistant {\n`)
+        node.response.forEach((src, index) => {
+
+            if (src instanceof ReasonNode && !this.reasoning)
+                return;
+
+            this.visit(src)
+        })
+
+        this.write(`\n${this.indent()}}`);
+    }
+
+    visitContent(node: ContentNode, args?: Record<string, any>) {
+        this.write(`content {\n`);
+        node.content.forEach((src, index) => {
+            this.visit(src);
+            if (index < node.content.length - 1)
+                this.write("\n\n");
+        })
+        this.write(`\n${this.indent()}}`);
+    }
+
+    visitUse(node: VarNode, args?: Record<string, any>) {
+        let name = null;
+        node.attributes.forEach(attr => {
+            if (attr.name === "name") {
+                name = attr.value;
+            }
+        });
+
+        if (!name) throw new Error("Variable 'name' not defined");
+
+        const value = this.vars.get(name)
+
+        if (!value) throw new Error(`Variable '${name}' doesn't contain a value.`);
+
+        this.write(`${JSON.stringify(value).slice(1, -1)}`);
+    }
+
+    visitReason(node: ReasonNode, args?: Record<string, any>) {
+        this.write(`reason {\n${node.text}\n${this.indent()}}`);
+    }
+
+    visitAnswer(node: AnswerNode, args?: Record<string, any>) {
+        this.write(`answer {\n${node.text}\n${this.indent()}}`);
+    }
+
+    visitString(node: StringNode, args?: Record<string, any>) {
+        this.write(`${node.string}`);
+    }
+}

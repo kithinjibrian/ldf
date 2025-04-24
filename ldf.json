@@ -1,0 +1,11 @@
+{
+    "src": "./",
+    "dist": "out",
+    "shards": [
+        "shards"
+    ],
+    "config": {
+        "tool": "to_assistant",
+        "reasoning": "hide"
+    }
+}
