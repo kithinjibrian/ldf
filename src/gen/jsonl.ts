@@ -93,6 +93,7 @@ export class JSONL implements LmlASTVisitor {
     ) {
         return node.body
             .forEach((src, index) => {
+
                 this.visit(src, args)
 
                 if (src instanceof SinkholeNode) {
@@ -316,7 +317,7 @@ export class JSONL implements LmlASTVisitor {
         this.write(` }`)
     }
 
-    visitli(
+    visitLi(
         node: LiNode,
         args?: Record<string, any>
     ) {
@@ -465,7 +466,6 @@ export class JSONL implements LmlASTVisitor {
         node: BNode,
         args?: Record<string, any>
     ) {
-        console.log(node)
         this.write(`b${node.no_space ? '-' : ''}`)
         this.visit(node.attributes);
         this.visit(node.body);
