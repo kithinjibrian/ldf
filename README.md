@@ -10,8 +10,8 @@ npm i -g @kithinji/ldf
 # Write the config file (`ldf.json`)
 ```json
 {
-    "src": "./",
-    "dist": "out",
+    "src": "src",
+    "dist": "dist",
     "shards": [
         "lugha_dataset",
         "text-to-sql.ldf"
@@ -21,6 +21,17 @@ npm i -g @kithinji/ldf
         "reasoning": "hide"
     }
 }
+```
+
+# How your files can be structured
+```
+|---- dist
+|---- src
+|       |----lugha_dataset
+|       |    |----arrays.ldf
+|       |    |----functions.ldf
+|       |----text-to-sql.ldf
+|---- ldf.json
 ```
 
 The configuration file helps ldf parse your dataset.
@@ -54,6 +65,11 @@ p { "I can read and reply your emails." }
         }
     }
 }
+```
+
+# To compile the dataset run
+```
+ldf ldf.json
 ```
 
 # LDF will then convert that to JSONL format
