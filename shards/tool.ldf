@@ -1,25 +1,19 @@
 conversation {
     user {
         content {
-p { "What is Advice Slip?" }
+p { "How would you use a for loop in Lugha to print the sum of all prime numbers between 50 and 100?" }
         }
     }
 
     assistant {
         content {
             answer {
-p { 
-"Advice Slip is an API that generates witty and inspiring advice slips at the click of a button."
-"With this API, you can access the following functions:" 
-}
+p { "The output will be:" }
 
-ol {
-    li { "Randomly generate an unique advice slip message." }
-    li { "Generate a customized advice slip with the message of your choice." }
-}
-
-p { 
-"These functions allow users to easily add a creative touch to applications such as chatbots and apps that provide personal advice." 
+code[lang="text"] {
+`
+Sum of prime numbers between 50 and 100: 241
+`
 }
             }
         }

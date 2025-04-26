@@ -61,6 +61,14 @@ export class JSONL implements LmlASTVisitor {
             const ast = lml(this.code);
             this.visit(ast)
 
+            this.codeBuffer.join('').split("\n").map((msg, index) => {
+                try {
+                    JSON.parse(msg);
+                } catch (e) {
+                    throw e;
+                }
+            })
+
             return this.codeBuffer.join("");
         } catch (e) {
             throw e;
@@ -346,6 +354,7 @@ export class JSONL implements LmlASTVisitor {
 
         this.write(`{ `)
 
+
         if (
             node.body instanceof BlockNode &&
             node.body.body[0] instanceof StringNode
@@ -505,7 +514,7 @@ export class JSONL implements LmlASTVisitor {
         if (node.value == " ")
             this.write("\\n")
         else
-            this.write(`'${JSON.stringify(node.value).slice(1, -1)}'`)
+            this.write(`\\"${JSON.stringify(node.value).replace(/\\"/g, '\\\\\\"').slice(1, -1)}\\"`)
     }
 
     visitNumber(

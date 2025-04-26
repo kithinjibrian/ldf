@@ -1,6 +1,6 @@
 {
     "name": "@kithinji/ldf",
-    "version": "1.0.21",
+    "version": "1.0.22",
     "main": "dist/main.js",
     "module": "dist/main.mjs",
     "types": "dist/main.d.ts",

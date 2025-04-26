@@ -5,62 +5,58 @@ Create LLM datasets in a simple intuitive format
 
 ```bash
 npm i -g @kithinji/ldf
-
-ldf data1.ldf data2.ldf -o data.jsonl
 ```
 
-# LDF format example
-
-```html
-    <conversation>
-        <user>
-            <content>
-                What is Lugha?
-            </content>
-        </user>
-        <assistant>
-            <content>
-                Lugha is a minimal, embeddable programming language designed for simplicity and flexibility. With
-                lightweight syntax and a small runtime, it serves as an ideal scripting language for applications, games,
-                and embedded systems. Lugha has interpreters implemented in multiple languages, making it highly portable
-                and easy to integrate into various environments.
-
-                Key features of Lugha include:
-
-                <ul>
-                    <li>Minimalist design – A small core language with essential constructs.</li>
-                    <li>Embeddable – Easily integrates into host applications with a simple API.</li>
-                    <li>Multi-language support – Interpreters available in different programming languages.</li>
-                    <li>Lightweight – Low memory footprint and fast execution.</li>
-                </ul>
-
-                Whether used for configuration, automation, or scripting within larger programs, Lugha provides a
-                straightforward and efficient way to extend software functionality.
-            </content>
-        </assistant>
-    </conversation>
-
-    <conversation>
-        <user>
-            <content>
-                How do you define a basic Lugha program?
-            </content>
-        </user>
-        <assistant>
-            <content>
-                <code lang="lugha">
-fun main(): unit {
-    print("Hello, World!");
+# Write the config file (`ldf.json`)
+```json
+{
+    "src": "./",
+    "dist": "out",
+    "shards": [
+        "lugha_dataset",
+        "text-to-sql.ldf"
+    ],
+    "config": {
+        "tool": "to_assistant",
+        "reasoning": "hide"
+    }
 }
-                </code>
-            </content>
-        </assistant>
-    </conversation>
 ```
 
-# Output
+The configuration file helps ldf parse your dataset.
+- src: The home directory
+- dist: Where to write the `data.jsonl` file
+- shards: Where your data files are located
+    - You can import folders and the tool will read all files ending with `.ldf` extension
+    - You can also import individual files
 
+# Example of a conversation
+```
+conversation {
+    user {
+        content {
+p { "What can you do for me?" }
+        }
+    }
+
+    assistant {
+        content {
+            reason {
+p {
+"Let me think. The user is asking what I can do for them."
+"I have various tools in my arsenal that can help the user automate some tasks."
+}
+            }
+
+            answer {
+p { "I can read and reply your emails." }
+            }
+        }
+    }
+}
+```
+
+# LDF will then convert that to JSONL format
 ```jsonl
-{ "messages": [{ "role": "user", "content": "What is Lugha?" }, { "role": "assistant", "content": "Lugha is a minimal, embeddable programming language designed for simplicity and flexibility. With\n            lightweight syntax and a small runtime, it serves as an ideal scripting language for applications, games,\n            and embedded systems. Lugha has interpreters implemented in multiple languages, making it highly portable\n            and easy to integrate into various environments.\n\n            Key features of Lugha include:- Minimalist design – A small core language with essential constructs.\n- Embeddable – Easily integrates into host applications with a simple API.\n- Multi-language support – Interpreters available in different programming languages.\n- Lightweight – Low memory footprint and fast execution.\nWhether used for configuration, automation, or scripting within larger programs, Lugha provides a\n            straightforward and efficient way to extend software functionality." }]}
-{ "messages": [{ "role": "user", "content": "How do you define a basic Lugha program?" }, { "role": "assistant", "content": "\n```lugha\nfun main(): unit {\n    print(\"Hello, World!\");\n}\n```\n" }]}
+{"messages":[{ "role": "user", "content": "p { \"What can you do for me\""}"}, { "role": "assistant", "content": "reason { p { \"Let me think...\" } } answer { p { \"I can read and reply your emails\" } }"}]}
 ```
