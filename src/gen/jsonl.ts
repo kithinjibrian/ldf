@@ -45,7 +45,7 @@ export class JSONL implements LmlASTVisitor {
         node: ASTNode,
         args?: Record<string, any>
     ) {
-        console.log(node.type)
+        // console.log(node.type)
     }
 
     public async visit(node?: ASTNode, args?: Record<string, any>): Promise<any> {
@@ -58,27 +58,25 @@ export class JSONL implements LmlASTVisitor {
         this.codeBuffer.push(code);
     }
 
-    public async run() {
+    public async run(): Promise<string> {
         try {
             const ast = await lml(this.code);
             await this.visit(ast)
 
-
-            this.codeBuffer
+            const clean = this.codeBuffer
                 .join('')
                 .split("\n")
-                .filter(src => src !== "")
-                .map((msg, index) => {
-                    console.log(msg)
+                .filter(src => src !== "");
 
-                    try {
-                        JSON.parse(msg);
-                    } catch (e) {
-                        throw e;
-                    }
-                })
+            clean.map((msg, index) => {
+                try {
+                    JSON.parse(msg);
+                } catch (e) {
+                    throw e;
+                }
+            })
 
-            return this.codeBuffer.filter(src => src !== "\n").join("");
+            return clean.join("\n");
         } catch (e) {
             throw e;
         }

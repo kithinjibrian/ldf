@@ -1,1 +1,0 @@
-{ "messages": [{ "role": "user", "content": "p { \"How would you use a for loop in Lugha to print the sum of all prime numbers between 50 and 100?\" }" }, { "role": "assistant", "content": "answer { p { \"The output will be:\" }code[lang=\"text\"] { `\nSum of prime numbers between 50 and 100: 241\n` } }" }]}
