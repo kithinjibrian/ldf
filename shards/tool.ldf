@@ -1,3 +1,14 @@
+script {
+`use std::io::{ print };
+
+fun main(): unit {
+    print("{}", 900);
+}
+
+main();
+`
+}
+
 conversation {
     user {
         content {

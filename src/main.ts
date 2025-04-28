@@ -22,7 +22,8 @@ async function exec(filepath: string, config: DataContainer) {
     const code = await readFile(filepath, 'utf-8');
 
     try {
-        return new JSONL(code, config).run();
+        const json = new JSONL(code, config)
+        return await json.run();
     } catch (e) {
         throw e;
     }

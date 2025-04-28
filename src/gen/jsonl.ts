@@ -22,14 +22,16 @@ import {
     lml,
     LmlASTVisitor,
     LmlSpanNode,
-    NoSpaceNode,
     NumberNode,
     OlNode,
     ParagraphNode,
+    ScriptNode,
     SinkholeNode,
     StringNode,
     UlNode
 } from "@kithinji/lml";
+
+import { exec } from "@kithinji/tlugha-node";
 
 export class JSONL implements LmlASTVisitor {
     private codeBuffer: string[] = [];
@@ -43,100 +45,105 @@ export class JSONL implements LmlASTVisitor {
         node: ASTNode,
         args?: Record<string, any>
     ) {
-        //console.log(node.type)
+        console.log(node.type)
     }
 
-    public visit(node?: ASTNode, args?: Record<string, any>): any {
+    public async visit(node?: ASTNode, args?: Record<string, any>): Promise<any> {
         if (node == undefined) return "";
 
-        return node.accept(this, args);
+        return await node.accept(this, args);
     }
 
     public write(code: string) {
         this.codeBuffer.push(code);
     }
 
-    public run() {
+    public async run() {
         try {
-            const ast = lml(this.code);
-            this.visit(ast)
+            const ast = await lml(this.code);
+            await this.visit(ast)
 
-            this.codeBuffer.join('').split("\n").map((msg, index) => {
-                try {
-                    JSON.parse(msg);
-                } catch (e) {
-                    throw e;
-                }
-            })
 
-            return this.codeBuffer.join("");
+            this.codeBuffer
+                .join('')
+                .split("\n")
+                .filter(src => src !== "")
+                .map((msg, index) => {
+                    console.log(msg)
+
+                    try {
+                        JSON.parse(msg);
+                    } catch (e) {
+                        throw e;
+                    }
+                })
+
+            return this.codeBuffer.filter(src => src !== "\n").join("");
         } catch (e) {
             throw e;
         }
     }
 
-    visitDocument(
+    async visitDocument(
         node: DocumentNode,
         args?: Record<string, any>
     ) {
-        this.visit(node.document, args)
+        await this.visit(node.document, args)
     }
 
-    visitElementList(
+    async visitElementList(
         node: ElementListNode,
         args?: Record<string, any>
     ) {
-        return node.sources
-            .forEach((src, index) => {
-                this.visit(src, args)
+        for (const [index, src] of node.sources.entries()) {
+            await this.visit(src);
 
-                if (index < node.sources.length - 1)
-                    this.write("\n");
-            })
+            if (index < node.sources.length - 1)
+                this.write("\n");
+        }
     }
 
-    visitBlock(
+    async visitBlock(
         node: BlockNode,
         args?: Record<string, any>
     ) {
-        return node.body
-            .forEach((src, index) => {
 
-                this.visit(src, args)
+        for (const [index, src] of node.body.entries()) {
+            await this.visit(src, args);
 
-                if (src instanceof SinkholeNode) {
-                    if (index < node.body.length - 1)
-                        this.write(", ");
-                }
-            });
+            if (src instanceof SinkholeNode) {
+                if (index < node.body.length - 1)
+                    this.write(", ");
+            }
+        }
     }
 
-    visitSinkhole(node: SinkholeNode, args?: Record<string, any>) {
+    async visitSinkhole(node: SinkholeNode, args?: Record<string, any>) {
         switch (node.name) {
             case "conversation": {
                 this.write(`{ "messages": [`)
-                this.visit(node.body)
+                await this.visit(node.body)
                 this.write("]}")
                 break;
             }
 
             case "system": {
                 this.write(`{ "role": "system", `);
-                this.visit(node.body);
+                await this.visit(node.body);
                 this.write(" }");
                 break;
             }
 
             case "user": {
                 this.write(`{ "role": "user", `);
-                this.visit(node.body);
+                await this.visit(node.body);
                 this.write(" }");
                 break;
             }
 
             case "assistant": {
                 this.write(`{ "role": "assistant", `);
-                this.visit(node.body);
+                await this.visit(node.body);
                 this.write(" }");
                 break;
             }
@@ -147,21 +154,21 @@ export class JSONL implements LmlASTVisitor {
                 else
                     this.write(`{ "role": "tool", `);
 
-                this.visit(node.body);
+                await this.visit(node.body);
                 this.write(" }");
                 break;
             }
 
             case "content": {
                 this.write(`"content": "`);
-                this.visit(node.body)
+                await this.visit(node.body)
                 this.write(`"`);
                 break;
             }
 
             case "answer": {
                 this.write(`answer { `);
-                this.visit(node.body)
+                await this.visit(node.body)
                 this.write(` }`);
                 break;
             }
@@ -174,181 +181,188 @@ export class JSONL implements LmlASTVisitor {
                 }
 
                 this.write(`reason { `);
-                this.visit(node.body)
+                await this.visit(node.body)
                 this.write(` }`);
                 break;
             }
         }
     }
 
-    visitH1(
+    async visitScript(
+        node: ScriptNode,
+        args?: Record<string, any>
+    ) {
+
+    }
+
+    async visitH1(
         node: H1Node,
         args?: Record<string, any>
     ) {
         this.write(`h1`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitH2(
+    async visitH2(
         node: H2Node,
         args?: Record<string, any>
     ) {
         this.write(`h2`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitH3(
+    async visitH3(
         node: H3Node,
         args?: Record<string, any>
     ) {
         this.write(`h3`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitH4(
+    async visitH4(
         node: H4Node,
         args?: Record<string, any>
     ) {
         this.write(`h4`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitH5(
+    async visitH5(
         node: H5Node,
         args?: Record<string, any>
     ) {
         this.write(`h5`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitH6(
+    async visitH6(
         node: H6Node,
         args?: Record<string, any>
     ) {
         this.write(`h6`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitParagraph(
+    async visitParagraph(
         node: ParagraphNode,
         args?: Record<string, any>
     ) {
         this.write(`p`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitOl(
+    async visitOl(
         node: OlNode,
         args?: Record<string, any>
     ) {
         this.write(`ol`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitUl(
+    async visitUl(
         node: UlNode,
         args?: Record<string, any>
     ) {
         this.write(`ul`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitLi(
+    async visitLi(
         node: LiNode,
         args?: Record<string, any>
     ) {
         this.write(`li`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` }`)
     }
 
-    visitCode(
+    async visitCode(
         node: CodeNode,
         args?: Record<string, any>
     ) {
         this.write(`code`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
@@ -367,37 +381,37 @@ export class JSONL implements LmlASTVisitor {
         this.write(` }`)
     }
 
-    visitImg(
+    async visitImg(
         node: LiNode,
         args?: Record<string, any>
     ) {
         this.write(`img`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`{ "" }`)
     }
 
-    visitSpan(
+    async visitSpan(
         node: LmlSpanNode,
         args?: Record<string, any>
     ) {
         this.write(`span`)
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else
             this.write(" ");
 
         this.write(`< `)
-        this.visit(node.body);
+        await this.visit(node.body);
         this.write(` >`)
     }
 
-    visitInput(
+    async visitInput(
         node: InputNode,
         args?: Record<string, any>
     ) {
@@ -406,7 +420,7 @@ export class JSONL implements LmlASTVisitor {
         const inline = node.body instanceof StringNode;
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else {
             if (!inline)
                 this.write(" ");
@@ -415,13 +429,13 @@ export class JSONL implements LmlASTVisitor {
         if (!inline)
             this.write("{ ")
 
-        this.visit(node.body);
+        await this.visit(node.body);
 
         if (!inline)
             this.write(" }")
     }
 
-    visitButton(
+    async visitButton(
         node: ButtonNode,
         args?: Record<string, any>
     ) {
@@ -430,7 +444,7 @@ export class JSONL implements LmlASTVisitor {
         const inline = node.body instanceof StringNode;
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else {
             if (!inline)
                 this.write(" ");
@@ -440,13 +454,13 @@ export class JSONL implements LmlASTVisitor {
         if (!inline)
             this.write("{ ")
 
-        this.visit(node.body);
+        await this.visit(node.body);
 
         if (!inline)
             this.write(" }")
     }
 
-    visitLink(
+    async visitLink(
         node: LinkNode,
         args?: Record<string, any>
     ) {
@@ -455,7 +469,7 @@ export class JSONL implements LmlASTVisitor {
         const inline = node.body instanceof StringNode;
 
         if (node.attributes)
-            this.visit(node.attributes);
+            await this.visit(node.attributes);
         else {
             if (!inline)
                 this.write(" ");
@@ -465,85 +479,75 @@ export class JSONL implements LmlASTVisitor {
         if (!inline)
             this.write("{ ")
 
-        this.visit(node.body);
+        await this.visit(node.body);
 
         if (!inline)
             this.write(" }")
     }
 
-    visitB(
+    async visitB(
         node: BNode,
         args?: Record<string, any>
     ) {
-        this.write(`b${node.no_space ? '-' : ''}`)
-        this.visit(node.attributes);
-        this.visit(node.body);
+        await this.visit(node.attributes);
+        await this.visit(node.body);
     }
 
-    visitC(
+    async visitC(
         node: CNode,
         args?: Record<string, any>
     ) {
-        this.write(`c${node.no_space ? '-' : ''}`)
-        this.visit(node.attributes);
-        this.visit(node.body);
+        await this.visit(node.attributes);
+        await this.visit(node.body);
     }
 
-    visitI(
+    async visitI(
         node: INode,
         args?: Record<string, any>
     ) {
-        this.write(`i${node.no_space ? '-' : ''}`)
-        this.visit(node.attributes);
-        this.visit(node.body);
+        await this.visit(node.attributes);
+        await this.visit(node.body);
     }
 
-    visitNoSpace(
-        node: NoSpaceNode,
-        args?: Record<string, any>
-    ) {
-        this.write(`ns`)
-        this.visit(node.attributes);
-        this.visit(node.body);
-    }
-
-    visitString(
+    async visitString(
         node: StringNode,
         args?: Record<string, any>
     ) {
         if (node.value == " ")
-            this.write("\\n")
+            return;
         else
             this.write(`\\"${JSON.stringify(node.value).replace(/\\"/g, '\\\\\\"').slice(1, -1)}\\"`)
     }
 
-    visitNumber(
+    async visitNumber(
         node: NumberNode,
         args?: Record<string, any>
     ) {
         this.write(`${node.value}`)
     }
 
-    visitAttributeList(
+    async visitAttributeList(
         node: AttributeListNode,
         args?: Record<string, any>
     ) {
         this.write("[");
-        node.attributes.forEach((src, index) => {
-            this.visit(src);
+
+        for (const [index, src] of node.attributes.entries()) {
+            await this.visit(src)
 
             if (index < node.attributes.length - 1)
                 this.write(", ");
-        })
+        }
+
         this.write("] ");
     }
 
-    visitAttribute(
+    async visitAttribute(
         node: AttributeNode,
         args?: Record<string, any>
     ) {
         this.write(node.key.name);
         this.write("=");
-        this.visit(node.value);
+        await this.visit(node.value);
     }
 }

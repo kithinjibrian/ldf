@@ -36,7 +36,8 @@
     },
     "homepage": "https://github.com/kithinjibrian/ldf#readme",
     "dependencies": {
-        "@kithinji/lml": "^1.0.12",
+        "@kithinji/lml": "^1.0.17",
+        "@kithinji/tlugha-node": "^0.0.5",
         "zod": "^3.24.3"
     }
 }

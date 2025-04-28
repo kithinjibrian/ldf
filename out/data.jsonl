@@ -1,2 +1,1 @@
-{ "messages": [{ "role": "user", "content": "p { \"I have been tasked with a search mission to identify and extract all the words that start with the letter grouping \\\"th\\\" from a given sentence. Can an AI provide a solution to this problem using Lugha?\" }" }]}
 { "messages": [{ "role": "user", "content": "p { \"How would you use a for loop in Lugha to print the sum of all prime numbers between 50 and 100?\" }" }, { "role": "assistant", "content": "answer { p { \"The output will be:\" }code[lang=\"text\"] { `\nSum of prime numbers between 50 and 100: 241\n` } }" }]}
